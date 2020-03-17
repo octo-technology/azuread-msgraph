@@ -4,6 +4,8 @@
 
 from __future__ import absolute_import, division, print_function
 
+
+
 ANSIBLE_METADATA = {
     'status': ['preview'],
     'supported_by': 'community',
@@ -151,20 +153,23 @@ team:
 
 import json
 
+from requests_oauthlib import OAuth2Session
+from oauthlib.oauth2 import BackendApplicationClient
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.urls import fetch_url
+from ansible.module_utils.urls import fetch_url,url_argument_spec
 
 __metaclass__ = type
 
 
 class AzureActiveDirectoryInterface(object):
-
-    ms_graph_api_url = "https://xxx.microsoft.com"
+    ms_graph_api_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
 
     def __init__(self, module):
         self._module = module
         self.headers = {"Content-Type": "application/json"}
-        self.session_token = self._get_token()
+
+        self.token = self._get_token()
+        raise Exception(self.token)
 
     def _send_request(self, url, data=None, headers=None, method="GET"):
         if data is not None:
@@ -186,7 +191,19 @@ class AzureActiveDirectoryInterface(object):
         self._module.fail_json(failed=True, msg="Grafana Teams API answered with HTTP %d" % status_code)
 
     def _get_token(self):
-        pass
+        client_id = "01ff3f2f-c91c-4db8-abdc-2ea5bfcd57f9"
+        client_secret = "Q?/9U4oKxyf5_HeJEAjIAELfU0lVp=S9"
+        scope = ["https://graph.microsoft.com/.default"]
+
+        client = BackendApplicationClient(client_id=client_id)
+
+        oauth = OAuth2Session(client=client, scope=scope)
+
+        token = oauth.fetch_token(token_url=self.ms_graph_api_url,
+                                  client_id=client_id,
+                                  client_secret=client_secret)
+
+        return token
 
     def create_group(self, name):
         url = "/api/groups"
@@ -227,16 +244,16 @@ def setup_module_object():
 argument_spec = url_argument_spec()
 argument_spec.update(
     name=dict(type='str', required=True),
+    state=dict(type='str', required=True)
 )
 
 
 def main():
-
     module = setup_module_object()
     state = module.params['state']
     name = module.params['name']
 
-    grafana_iface = GrafanaTeamInterface(module)
+    grafana_iface = AzureActiveDirectoryInterface(module)
 
     changed = False
     if state == 'present':
