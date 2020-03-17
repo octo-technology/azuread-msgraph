@@ -1,0 +1,10 @@
+- hosts: localhost
+  vars:
+      azuread_groups:
+          - mon-groupe-de-test
+          - hello-world-group
+  tasks:
+      - name: create groups in aad
+        total_azuread_group:
+          name: "{{ item }}"
+        loop: "{{ azuread_groups }}"
