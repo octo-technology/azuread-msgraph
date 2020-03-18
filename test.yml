@@ -7,6 +7,10 @@
       total_azuread_group:
         name: "{{ item }}"
         state: "present"
+        validate_certs: False
+        client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+        client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+        tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
       loop: "{{ azuread_groups }}"
       register: result
 

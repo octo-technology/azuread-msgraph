@@ -189,8 +189,8 @@ class AzureActiveDirectoryInterface(object):
         self._module.fail_json(failed=True, msg="Grafana Teams API answered with HTTP %d" % status_code)
 
     def _get_token(self):
-        client_id = "01ff3f2f-c91c-4db8-abdc-2ea5bfcd57f9"
-        client_secret = "FIX_ME"
+        client_id = self._module.params.get("client_id")
+        client_secret = self._module.params.get("client_secret")
         scope = ["https://graph.microsoft.com/.default"]
         token_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
 
@@ -208,13 +208,7 @@ class AzureActiveDirectoryInterface(object):
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
-    def get_directory_objects(self):
-        url = "/directoryObjects/fe8041b2-2127-4652-9311-b420e55fd10e"
-        response = self._send_request(url, headers=self.headers, method="GET")
-        return response.get("value")
-
     def get_groups(self):
-        #url = "/directoryObjects"
         url = "/groups"
         response = self._send_request(url, headers=self.headers, method="GET")
         return response.get("value")
@@ -248,7 +242,10 @@ def setup_module_object():
 argument_spec = url_argument_spec()
 argument_spec.update(
     name=dict(type='str', required=True),
-    state=dict(type='str', required=True)
+    state=dict(type='str', required=True),
+    client_id=dict(type='str', required=True),
+    client_secret=dict(type='str', required=True),
+    tenant_id=dict(type='str', required=True)
 )
 
 
@@ -258,8 +255,6 @@ def main():
     name = module.params['name']
 
     azuread_iface  = AzureActiveDirectoryInterface(module)
-#    res = azuread_iface.get_directory_objects()
-#    raise Exception(res)
 
     changed = False
     if state == 'present':
