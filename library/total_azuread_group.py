@@ -190,7 +190,7 @@ class AzureActiveDirectoryInterface(object):
 
     def _get_token(self):
         client_id = "01ff3f2f-c91c-4db8-abdc-2ea5bfcd57f9"
-        client_secret = "Q?/9U4oKxyf5_HeJEAjIAELfU0lVp=S9"
+        client_secret = "FIX_ME"
         scope = ["https://graph.microsoft.com/.default"]
         token_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
 
@@ -258,8 +258,8 @@ def main():
     name = module.params['name']
 
     azuread_iface  = AzureActiveDirectoryInterface(module)
-    res = azuread_iface.get_directory_objects()
-    raise Exception(res)
+#    res = azuread_iface.get_directory_objects()
+#    raise Exception(res)
 
     changed = False
     if state == 'present':
