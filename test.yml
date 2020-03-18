@@ -1,11 +1,14 @@
 - hosts: localhost
   vars:
     azuread_groups:
-      - mon-groupe-de-test
-      - hello-world-group
+      - test-rre-Group
   tasks:
     - name: create groups in aad
       total_azuread_group:
         name: "{{ item }}"
         state: "present"
       loop: "{{ azuread_groups }}"
+      register: result
+
+    - debug:
+        var: result

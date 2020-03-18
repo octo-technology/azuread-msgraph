@@ -162,14 +162,12 @@ __metaclass__ = type
 
 
 class AzureActiveDirectoryInterface(object):
-    ms_graph_api_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
+    ms_graph_api_url = "https://graph.microsoft.com/v1.0"
 
     def __init__(self, module):
         self._module = module
-        self.headers = {"Content-Type": "application/json"}
-
-        self.token = self._get_token()
-        raise Exception(self.token)
+        token = self._get_token()
+        self.headers = {"Content-Type": "application/json", "Authorization": "Bearer %s" % token.get("access_token")}
 
     def _send_request(self, url, data=None, headers=None, method="GET"):
         if data is not None:
@@ -194,32 +192,38 @@ class AzureActiveDirectoryInterface(object):
         client_id = "01ff3f2f-c91c-4db8-abdc-2ea5bfcd57f9"
         client_secret = "Q?/9U4oKxyf5_HeJEAjIAELfU0lVp=S9"
         scope = ["https://graph.microsoft.com/.default"]
+        token_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
 
         client = BackendApplicationClient(client_id=client_id)
-
-        oauth = OAuth2Session(client=client, scope=scope)
-
-        token = oauth.fetch_token(token_url=self.ms_graph_api_url,
+        oauth = OAuth2Session(client=client)
+        token = oauth.fetch_token(token_url=token_url,
                                   client_id=client_id,
-                                  client_secret=client_secret)
-
+                                  client_secret=client_secret,
+                                  scope=scope)
         return token
 
     def create_group(self, name):
-        url = "/api/groups"
+        url = "/groups"
         group = dict(name=name)
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
-    def get_group(self, name):
-        url = "/api/teams/search?name={team}".format(team=name)
+    def get_directory_objects(self):
+        url = "/directoryObjects/fe8041b2-2127-4652-9311-b420e55fd10e"
         response = self._send_request(url, headers=self.headers, method="GET")
-        if not response.get("totalCount") <= 1:
-            raise AssertionError("Expected 1 team, got %d" % response["totalCount"])
+        return response.get("value")
 
-        if len(response.get("teams")) == 0:
-            return None
-        return response.get("teams")[0]
+    def get_groups(self):
+        #url = "/directoryObjects"
+        url = "/groups"
+        response = self._send_request(url, headers=self.headers, method="GET")
+        return response.get("value")
+
+    def get_group(self, name):
+        groups = self.get_groups()
+        for group in groups:
+            if group.get("displayName") == name:
+                return group
 
     def update_group(self, group_id):
         url = "/api/teams/{team_id}".format(team_id=team_id)
@@ -253,45 +257,25 @@ def main():
     state = module.params['state']
     name = module.params['name']
 
-    grafana_iface = AzureActiveDirectoryInterface(module)
+    azuread_iface  = AzureActiveDirectoryInterface(module)
+    res = azuread_iface.get_directory_objects()
+    raise Exception(res)
 
     changed = False
     if state == 'present':
-        team = grafana_iface.get_team(name)
-        if team is None:
-            new_team = grafana_iface.create_team(name, email)
-            team = grafana_iface.get_team(name)
+        group = azuread_iface.get_group(name)
+        if group is None:
+            pass
+            #new_team = grafana_iface.create_team(name, email)
+            #team = grafana_iface.get_team(name)
             changed = True
-        if members is not None:
-            cur_members = grafana_iface.get_team_members(team.get("id"))
-            plan = diff_members(members, cur_members)
-            for member in plan.get("to_add"):
-                grafana_iface.add_team_member(team.get("id"), member)
-                changed = True
-            if enforce_members:
-                for member in plan.get("to_del"):
-                    grafana_iface.delete_team_member(team.get("id"), member)
-                    changed = True
-            team = grafana_iface.get_team(name)
-        team['members'] = grafana_iface.get_team_members(team.get("id"))
-        module.exit_json(failed=False, changed=changed, team=team)
+        module.exit_json(changed=changed, group=group)
     elif state == 'absent':
         team = grafana_iface.get_team(name)
         if team is None:
             module.exit_json(failed=False, changed=False, message="No team found")
         result = grafana_iface.delete_team(team.get("id"))
         module.exit_json(failed=False, changed=True, message=result.get("message"))
-
-
-def diff_members(target, current):
-    diff = {"to_del": [], "to_add": []}
-    for member in target:
-        if member not in current:
-            diff["to_add"].append(member)
-    for member in current:
-        if member not in target:
-            diff["to_del"].append(member)
-    return diff
 
 
 if __name__ == '__main__':
