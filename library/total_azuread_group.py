@@ -155,6 +155,7 @@ from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url, url_argument_spec
+from ansible.module_utils.common.dict_transformations import snake_dict_to_camel_dict
 
 __metaclass__ = type
 
@@ -182,15 +183,18 @@ class AzureActiveDirectoryInterface(object):
             self._module.fail_json(failed=True, msg="Unauthorized to perform action '%s' on '%s'" % (method, full_url))
         elif status_code == 403:
             self._module.fail_json(failed=True, msg="Permission Denied")
-        elif status_code == 200:
-            return self._module.from_json(resp.read())
+        elif 200 <= status_code < 299:
+            body = resp.read()
+            if body:
+                return self._module.from_json(body)
+            return
         self._module.fail_json(failed=True, msg="Grafana Teams API answered with HTTP %d" % status_code)
 
     def _get_token(self):
         client_id = self._module.params.get("client_id")
         client_secret = self._module.params.get("client_secret")
         scope = ["https://graph.microsoft.com/.default"]
-        token_url = "https://login.microsoftonline.com/fe8041b2-2127-4652-9311-b420e55fd10e/oauth2/v2.0/token"
+        token_url = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token".format(tenant_id=self._module.params.get("tenant_id"))
 
         client = BackendApplicationClient(client_id=client_id)
         oauth = OAuth2Session(client=client)
@@ -200,22 +204,8 @@ class AzureActiveDirectoryInterface(object):
                                   scope=scope)
         return token
 
-    def create_group(self, display_name, mail_nickname, security_enabled=True, description=None, mail_enabled=False,
-                     allow_external_senders=False, auto_subscribe_new_members=False, owners=None, members=None):
-
+    def create_group(self, group):
         url = "/groups"
-        group = dict(description=description,
-                     displayName=display_name,
-                     mailEnabled=mail_enabled,
-                     mailNickname=mail_nickname,
-                     securityEnabled=security_enabled,
-                     allowExternalSenders=allow_external_senders,
-                     autoSubscribeNewMembers=auto_subscribe_new_members,
-                     # groupTypes=group_types,
-
-                     owners=owners,
-                     members=members
-                     )
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
@@ -231,27 +221,9 @@ class AzureActiveDirectoryInterface(object):
                 return group
 
     # todo https://docs.microsoft.com/fr-fr/graph/api/group-update?view=graph-rest-1.0&tabs=http
-    def update_group(self, group_id, members, allow_external_senders=None, auto_subscribe_new_members=None,
-                     description=None, display_name=None, mail_enabled=None, mail_nickname=None, security_enabled=None,
-                     # group_types=None, visibility=None
-                     ):
-
+    def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
-
-        group = dict(description=description,
-                     displayName=display_name,
-                     mailEnabled=mail_enabled,
-                     mailNickname=mail_nickname,
-                     securityEnabled=security_enabled,
-                     allowExternalSenders=allow_external_senders,
-                     autoSubscribeNewMembers=auto_subscribe_new_members,
-                     members=members
-                     # groupTypes=group_types,
-                     # visibility=visibility
-                     )
-
-        response = self._send_request(url, data=group, headers=self.headers, method="PATCH")
-        return response
+        self._send_request(url, data=group, headers=self.headers, method="PATCH")
 
     def delete_group(self, group_id):
         url = "/groups/{group_id}".format(group_id=group_id)
@@ -267,40 +239,71 @@ def setup_module_object():
     return module
 
 
+def build_group_from_params(params):
+    GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
+                    "mail_nickname", "security_enabled", "owners", "members"]
+    group = {}
+    for param in GROUP_PARAMS:
+        if not params[param]:
+            continue
+        group[param] = params[param]
+    return snake_dict_to_camel_dict(group)
+
+
 argument_spec = url_argument_spec()
 argument_spec.update(
-    name=dict(type='str', required=True),
     state=dict(type='str', required=True),
     client_id=dict(type='str', required=True),
     client_secret=dict(type='str', required=True),
-    tenant_id=dict(type='str', required=True)
+    tenant_id=dict(type='str', required=True),
+    display_name=dict(type='str', required=True, aliases=["name"]),
+    description=dict(type='str', required=True),
+    group_types=dict(type='list', default="Unified", choices=["Unified", "DynamicMembership"]),
+    mail_enabled=dict(type='bool', default=True),
+    mail_nickname=dict(type='str', required=True),
+    security_enabled=dict(type='bool', default=True),
+    owners=dict(type='list', default=[]),
+    members=dict(type='list', default=[]),
 )
+
+
+def compare_groups(current, new):
+    current_keys = current.keys()
+    new_keys = new.keys()
+    keys_to_remove = [item for item in current_keys if item not in new_keys]
+    for item in keys_to_remove:
+        current.pop(item)
+    if current != new:
+        return dict(before=current, after=new)
 
 
 def main():
     module = setup_module_object()
     state = module.params['state']
-    name = module.params['name']
+    name = module.params['display_name']
 
     azuread_iface = AzureActiveDirectoryInterface(module)
+    group = azuread_iface.get_group(name)
 
     changed = False
+    diff = None
     if state == 'present':
-        group = azuread_iface.get_group(name)
+        new_group =  build_group_from_params(module.params)
         if group is None:
-            pass
-            #new_group = azuread_iface.create_group(name, mail_nickname, security_enabled, description=None, mail_enabled=False,
-            #         allow_external_senders=False, auto_subscribe_new_members=False, owners=None, members=None)
-            group = azuread_iface.get_group(name)
+            group = azuread_iface.create_group(new_group)
             changed = True
-        module.exit_json(changed=changed, group=group)
-
+        else:
+            diff = compare_groups(group.copy(), new_group.copy())
+            if diff is not None:
+                azuread_iface.update_group(group.get("id"), new_group)
+                group = azuread_iface.get_group(name)
+                changed = True
+        module.exit_json(changed=changed, group=group, diff=diff)
     elif state == 'absent':
-        group = azuread_iface.get_group(name)
         if group is None:
             module.exit_json(failed=False, changed=False, message="No group found")
-        result = azuread_iface.delete_team(group.get("id"))
-        module.exit_json(failed=False, changed=True, message=result.get("message"))
+        azuread_iface.delete_group(group.get("id"))
+        module.exit_json(failed=False, changed=True, message="Group deleted")
 
 
 if __name__ == '__main__':

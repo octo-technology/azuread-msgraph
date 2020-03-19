@@ -1,18 +1,95 @@
 - hosts: localhost
   vars:
-    azuread_groups:
-      - test-rre-Group
+    azuread_group:
+      name: test-rre-Group
+      description: "test rre"
+      mail_nickname: "testrre"
   tasks:
-    - name: create groups in aad
+    - name: create group in aad
       total_azuread_group:
-        name: "{{ item }}"
+        name: "{{ azuread_group.name }}"
+        description: "{{ azuread_group.description }}"
+        mail_nickname: "{{ azuread_group.mail_nickname }}"
         state: "present"
         validate_certs: False
         client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
         client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
         tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
-      loop: "{{ azuread_groups }}"
       register: result
 
-    - debug:
-        var: result
+    - assert:
+        that:
+        - result.changed
+        - result.group.displayName == "test-rre-Group"
+        - result.group.description == "test rre"
+        - result.group.mailNickname == "testrre"
+
+    - name: create group in aad (idempotency)
+      total_azuread_group:
+        name: "{{ azuread_group.name }}"
+        description: "{{ azuread_group.description }}"
+        mail_nickname: "{{ azuread_group.mail_nickname }}"
+        state: "present"
+        validate_certs: False
+        client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+        client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+        tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
+      register: result
+
+    - assert:
+        that:
+        - not result.changed
+        - result.group.displayName == "test-rre-Group"
+        - result.group.description == "test rre"
+        - result.group.mailNickname == "testrre"
+
+    - name: Update group in aad (idempotency)
+      total_azuread_group:
+        name: "{{ azuread_group.name }}"
+        description: "new_desc"
+        mail_nickname: "newnick"
+        state: "present"
+        validate_certs: False
+        client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+        client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+        tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
+      register: result
+
+    - assert:
+        that:
+        - result.changed
+        - result.group.displayName == "test-rre-Group"
+        - result.group.description == "new_desc"
+        - result.group.mailNickname == "newnick"
+
+    - name: delete group in aad
+      total_azuread_group:
+        name: "{{ azuread_group.name }}"
+        description: "{{ azuread_group.description }}"
+        mail_nickname: "{{ azuread_group.mail_nickname }}"
+        validate_certs: False
+        client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+        client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+        tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
+        state: absent
+      register: result
+
+    - assert:
+        that:
+        - result.changed
+
+    - name: delete group in aad (idempotency)
+      total_azuread_group:
+        name: "{{ azuread_group.name }}"
+        description: "{{ azuread_group.description }}"
+        mail_nickname: "{{ azuread_group.mail_nickname }}"
+        validate_certs: False
+        client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+        client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+        tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
+        state: absent
+      register: result
+
+    - assert:
+        that:
+        - not result.changed
