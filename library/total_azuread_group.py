@@ -4,8 +4,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-
-
 ANSIBLE_METADATA = {
     'status': ['preview'],
     'supported_by': 'community',
@@ -156,7 +154,7 @@ import json
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.urls import fetch_url,url_argument_spec
+from ansible.module_utils.urls import fetch_url, url_argument_spec
 
 __metaclass__ = type
 
@@ -202,9 +200,22 @@ class AzureActiveDirectoryInterface(object):
                                   scope=scope)
         return token
 
-    def create_group(self, name):
+    def create_group(self, display_name, mail_nickname, security_enabled=True, description=None, mail_enabled=False,
+                     allow_external_senders=False, auto_subscribe_new_members=False, owners=None, members=None):
+
         url = "/groups"
-        group = dict(name=name)
+        group = dict(description=description,
+                     displayName=display_name,
+                     mailEnabled=mail_enabled,
+                     mailNickname=mail_nickname,
+                     securityEnabled=security_enabled,
+                     allowExternalSenders=allow_external_senders,
+                     autoSubscribeNewMembers=auto_subscribe_new_members,
+                     # groupTypes=group_types,
+
+                     owners=owners,
+                     members=members
+                     )
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
@@ -219,14 +230,31 @@ class AzureActiveDirectoryInterface(object):
             if group.get("displayName") == name:
                 return group
 
-    def update_group(self, group_id):
-        url = "/api/teams/{team_id}".format(team_id=team_id)
-        team = dict(email=email, name=name)
-        response = self._send_request(url, data=team, headers=self.headers, method="PUT")
+    # todo https://docs.microsoft.com/fr-fr/graph/api/group-update?view=graph-rest-1.0&tabs=http
+    def update_group(self, group_id, members, allow_external_senders=None, auto_subscribe_new_members=None,
+                     description=None, display_name=None, mail_enabled=None, mail_nickname=None, security_enabled=None,
+                     # group_types=None, visibility=None
+                     ):
+
+        url = "/groups/{group_id}".format(group_id=group_id)
+
+        group = dict(description=description,
+                     displayName=display_name,
+                     mailEnabled=mail_enabled,
+                     mailNickname=mail_nickname,
+                     securityEnabled=security_enabled,
+                     allowExternalSenders=allow_external_senders,
+                     autoSubscribeNewMembers=auto_subscribe_new_members,
+                     members=members
+                     # groupTypes=group_types,
+                     # visibility=visibility
+                     )
+
+        response = self._send_request(url, data=group, headers=self.headers, method="PATCH")
         return response
 
     def delete_group(self, group_id):
-        url = "/api/teams/{team_id}".format(team_id=team_id)
+        url = "/groups/{group_id}".format(group_id=group_id)
         response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
 
@@ -254,22 +282,24 @@ def main():
     state = module.params['state']
     name = module.params['name']
 
-    azuread_iface  = AzureActiveDirectoryInterface(module)
+    azuread_iface = AzureActiveDirectoryInterface(module)
 
     changed = False
     if state == 'present':
         group = azuread_iface.get_group(name)
         if group is None:
             pass
-            #new_team = grafana_iface.create_team(name, email)
-            #team = grafana_iface.get_team(name)
+            #new_group = azuread_iface.create_group(name, mail_nickname, security_enabled, description=None, mail_enabled=False,
+            #         allow_external_senders=False, auto_subscribe_new_members=False, owners=None, members=None)
+            group = azuread_iface.get_group(name)
             changed = True
         module.exit_json(changed=changed, group=group)
+
     elif state == 'absent':
-        team = grafana_iface.get_team(name)
-        if team is None:
-            module.exit_json(failed=False, changed=False, message="No team found")
-        result = grafana_iface.delete_team(team.get("id"))
+        group = azuread_iface.get_group(name)
+        if group is None:
+            module.exit_json(failed=False, changed=False, message="No group found")
+        result = azuread_iface.delete_team(group.get("id"))
         module.exit_json(failed=False, changed=True, message=result.get("message"))
 
 
