@@ -51,9 +51,6 @@ options:
       - list of members found on the Team.
     default: False
     type: bool
-extends_documentation_fragment:
-- community.grafana.basic_auth
-- community.grafana.api_key
 '''
 
 EXAMPLES = '''
@@ -150,12 +147,17 @@ team:
 '''
 
 import json
-
-from requests_oauthlib import OAuth2Session
-from oauthlib.oauth2 import BackendApplicationClient
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url, url_argument_spec
 from ansible.module_utils.common.dict_transformations import snake_dict_to_camel_dict
+
+try:
+    from requests_oauthlib import OAuth2Session
+    from oauthlib.oauth2 import BackendApplicationClient
+    HAS_DEPS = True
+except ImportError:
+    HAS_DEPS = False
+
 
 __metaclass__ = type
 
@@ -220,7 +222,6 @@ class AzureActiveDirectoryInterface(object):
             if group.get("displayName") == name:
                 return group
 
-    # todo https://docs.microsoft.com/fr-fr/graph/api/group-update?view=graph-rest-1.0&tabs=http
     def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
         self._send_request(url, data=group, headers=self.headers, method="PATCH")
@@ -279,6 +280,10 @@ def compare_groups(current, new):
 
 def main():
     module = setup_module_object()
+
+    if not HAS_DEPS:
+        module.fail_json(msg="module requires requests and requests-oauthlib")
+
     state = module.params['state']
     name = module.params['display_name']
 
@@ -288,7 +293,7 @@ def main():
     changed = False
     diff = None
     if state == 'present':
-        new_group =  build_group_from_params(module.params)
+        new_group = build_group_from_params(module.params)
         if group is None:
             group = azuread_iface.create_group(new_group)
             changed = True
