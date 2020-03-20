@@ -59,7 +59,7 @@ options:
     required: false
     type: list
     elements: str
-    choices=["Unified", "DynamicMembership"]
+    choices: ["Unified","DynamicMembership"]
   mail_enabled:
     description:
       - Specifies whether the group is mail-enabled.
@@ -122,7 +122,7 @@ team:
     returned: On success
     type: complex
     contains:
-        @odata.context: 
+        context: 
             description: Object context
             returned: always
             type: str
