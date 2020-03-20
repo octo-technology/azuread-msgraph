@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# Copyright: (c) 2020, TOTAL SA
+
+# Copyright: (c) 2020, OCTO TECHNOLOGY
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
 
@@ -15,15 +17,15 @@ DOCUMENTATION = '''
 module: total_azuread_group
 author:
   - Rémi REY (@rrey)
+  - Roberto Duarte (@DuarteRoberto)
 version_added: "2.10"
 short_description: Manage azure ad groups
 description:
   - Create/update/delete AzureAD Groups through the Microsoft Graph API.
-
 options:
   state:
     description:
-      - 
+      - The desired state for the group
     required: true
     type: str
     choices: ["present", "absent"]
@@ -46,6 +48,8 @@ options:
     description:
       - The display name for the group.
     required: true
+    aliases:
+      - name
     type: str
   description:
     description:
@@ -89,26 +93,27 @@ options:
     default: []
     type: list
     elements: str
+extends_documentation_fragment:
+- url
 '''
 
 EXAMPLES = '''
 ---
 - name: create group in aad
   total_azuread_group:
-    name: "{{ azuread_group.name }}"
+    desired_name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     state: "present"
-    validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
     tenant_id: "{{ tenant_id }}"
+
 - name: delete group in aad
   total_azuread_group:
-    name: "{{ azuread_group.name }}"
+    desired_name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
-    validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
     tenant_id: "{{ tenant_id }}"
@@ -122,7 +127,7 @@ team:
     returned: On success
     type: complex
     contains:
-        context: 
+        context:
             description: Object context
             returned: always
             type: str
@@ -135,26 +140,26 @@ team:
             sample:
                 - "502df398-d59c-469d-944f-34a50e60db3f"
         deletedDateTime:
-            description: 
-                - For some Azure Active Directory objects (user, group, application), if the object is deleted, 
-                - it is first logically deleted, and this property is updated with the date and time when the object 
-                - was deleted. Otherwise this property is null. If the object is restored, 
+            description:
+                - For some Azure Active Directory objects (user, group, application), if the object is deleted,
+                - it is first logically deleted, and this property is updated with the date and time when the object
+                - was deleted. Otherwise this property is null. If the object is restored,
                 - this property is updated to null.
             returned: always
             type: str
             sample:
                 - null
         classification:
-            description: Describes a classification for the group (such as low, medium or high business impact). 
+            description: Describes a classification for the group (such as low, medium or high business impact).
             returned: always
             type: str
             sample:
                 - null
         createdDateTime:
-            description: 
-                - Timestamp of when the group was created. 
-                - The value cannot be modified and is automatically populated when the group is created. 
-                - The Timestamp type represents date and time using ISO 8601 format and is always in UTC time. 
+            description:
+                - Timestamp of when the group was created.
+                - The value cannot be modified and is automatically populated when the group is created.
+                - The Timestamp type represents date and time using ISO 8601 format and is always in UTC time.
             returned: always
             type: str
             sample:
@@ -171,90 +176,90 @@ team:
             type: str
             sample:
                 - "Group with designated owner and members"
-        displayName: 
-            description: 
-                - The display name for the group. 
+        displayName:
+            description:
+                - The display name for the group.
                 - This property is required when a group is created and cannot be cleared during updates.
             returned: always
             type: str
             sample:
                 - "Operations group"
-        groupTypes: 
+        groupTypes:
             description: Specifies the group type and its membership.
             returned: always
             type: list
             sample:
                 - ["Unified"]
-        mail: 
+        mail:
             description: The SMTP address for the group.
             returned: always
             type: str
             sample:
                 - "operations2019@contoso.com"
-        mailEnabled: 
+        mailEnabled:
             description: Specifies whether the group is mail-enabled.
             returned: always
             type: bool
             sample:
                 - true
         mailNickname:
-            description: 
-                - The mail alias for the group, unique in the organization. 
+            description:
+                - The mail alias for the group, unique in the organization.
                 - This property must be specified when a group is created.
             returned: always
             type: str
             sample:
                 - "operations2019"
-        onPremisesLastSyncDateTime: 
+        onPremisesLastSyncDateTime:
             description: Indicates the last time at which the group was synced with the on-premises directory.
             returned: always
             type: str
             sample:
                 - null
-        onPremisesSecurityIdentifier: 
-            description: 
-                - Contains the on-premises security identifier (SID) for the group that was synchronized 
+        onPremisesSecurityIdentifier:
+            description:
+                - Contains the on-premises security identifier (SID) for the group that was synchronized
                 - from on-premises to the cloud.
             returned: always
             type: str
             sample:
                 - null
-        onPremisesSyncEnabled: 
-            description: 
-                - true if this group is synced from an on-premises directory; false if this group was originally 
-                - synced from an on-premises directory but is no longer synced; 
+        onPremisesSyncEnabled:
+            description:
+                - true if this group is synced from an on-premises directory; false if this group was originally
+                - synced from an on-premises directory but is no longer synced;
                 - null if this object has never been synced from an on-premises directory (default).
             returned: always
             type: str
             sample:
                 - null
-        preferredDataLocation: 
-            description: The preferred data location for the group. 
+        preferredDataLocation:
+            description: The preferred data location for the group.
             returned: always
             type: str
             sample:
                 - "CAN"
-        proxyAddresses: 
-            description: Email addresses for the group that direct to the same group mailbox. 
+        proxyAddresses:
+            description: Email addresses for the group that direct to the same group mailbox.
             returned: always
             type: str
             sample:
                 - ["SMTP:operations2019@contoso.com"]
-        renewedDateTime: 
-            description: 
-                - Timestamp of when the group was last renewed. 
-                - This cannot be modified directly and is only updated via the renew service action. 
+        renewedDateTime:
+            description:
+                - Timestamp of when the group was last renewed.
+                - This cannot be modified directly and is only updated via the renew service action.
             returned: always
             type: str
             sample:
                 - "2018-12-27T22:17:07Z"
-        resourceBehaviorOptions: 
+        resourceBehaviorOptions:
             description: ???
             returned: always
             type: list
             sample:
                 - []
-        resourceProvisioningOptions: 
+        resourceProvisioningOptions:
             description: ???
             returned: always
             type: list
@@ -266,13 +271,13 @@ team:
             type: bool
             sample:
                 - false
-        visibility: 
+        visibility:
             description: Specifies the visibility of an Office 365 group.
             returned: always
             type: str
             sample:
                 - "Public"
-        onPremisesProvisioningErrors: 
+        onPremisesProvisioningErrors:
             description: Errors when using Microsoft synchronization product during provisioning.
             returned: always
             type: list
@@ -388,7 +393,7 @@ def build_group_from_params(params):
 
 argument_spec = url_argument_spec()
 argument_spec.update(
-    state=dict(type='str', required=True),
+    state=dict(type='str', required=True, choices=["present", "absent"]),
     client_id=dict(type='str', required=True),
     client_secret=dict(type='str', required=True),
     tenant_id=dict(type='str', required=True),
