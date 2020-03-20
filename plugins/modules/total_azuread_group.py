@@ -12,87 +12,107 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: grafana_team
+module: total_azuread_group
 author:
   - Rémi REY (@rrey)
 version_added: "2.10"
-short_description: Manage Grafana Teams
+short_description: Manage azure ad groups
 description:
-  - Create/update/delete Grafana Teams through the Teams API.
-  - Also allows to add members in the team (if members exists).
-  - The Teams API is only available starting Grafana 5 and the module will fail if the server version is lower than version 5.
+  - Create/update/delete AzureAD Groups through the Microsoft Graph API.
+
 options:
-  name:
-    description:
-      - The name of the Grafana Team.
-    required: true
-    type: str
-  email:
-    description:
-      - The mail address associated with the Team.
-    required: true
-    type: str
-  members:
-    description:
-      - List of team members (emails).
-      - The list can be enforced with C(enforce_members) parameter.
-    type: list
-    elements: str
   state:
     description:
-      - Delete the members not found in the C(members) parameters from the
-      - list of members found on the Team.
-    default: present
+      - 
+    required: true
     type: str
     choices: ["present", "absent"]
-  enforce_members:
+  client_id:
     description:
-      - Delete the members not found in the C(members) parameters from the
-      - list of members found on the Team.
-    default: False
+      - the client id.
+    required: true
+    type: str
+  client_secret:
+    description:
+      - the client secret.
+    required: true
+    type: str
+  tenant_id:
+    description:
+      - id of the azure tenant.
+    required: true
+    type: str
+  display_name:
+    description:
+      - The display name for the group.
+    required: true
+    type: str
+  description:
+    description:
+      - An optional description for the group.
+    required: true
+    type: str
+  group_types:
+    description:
+      - Specifies the group type and its membership.
+    default: "Unified"
+    required: false
+    type: list
+    elements: str
+    choices=["Unified", "DynamicMembership"]
+  mail_enabled:
+    description:
+      - Specifies whether the group is mail-enabled.
+    default: true
     type: bool
+  mail_nickname:
+    description:
+      - he mail alias for the group, unique in the organization.
+    required: true
+    type: str
+  security_enabled:
+    description:
+      - Specifies whether the group is a security group.
+    default: true
+    type: bool
+  owners:
+    description:
+      - This property represents the owners for the group at creation time.
+      - directoryObject
+    default: []
+    type: list
+    elements: str
+  members:
+    description:
+      - Users and groups that are members of this group.
+      - directoryObject
+    default: []
+    type: list
+    elements: str
 '''
 
 EXAMPLES = '''
 ---
-- name: Create a team
-  grafana_team:
-      url: "https://grafana.example.com"
-      grafana_api_key: "{{ some_api_token_value }}"
-      name: "grafana_working_group"
-      email: "foo.bar@example.com"
-      state: present
-
-- name: Create a team with members
-  grafana_team:
-      url: "https://grafana.example.com"
-      grafana_api_key: "{{ some_api_token_value }}"
-      name: "grafana_working_group"
-      email: "foo.bar@example.com"
-      members:
-          - john.doe@example.com
-          - jane.doe@example.com
-      state: present
-
-- name: Create a team with members and enforce the list of members
-  grafana_team:
-      url: "https://grafana.example.com"
-      grafana_api_key: "{{ some_api_token_value }}"
-      name: "grafana_working_group"
-      email: "foo.bar@example.com"
-      members:
-          - john.doe@example.com
-          - jane.doe@example.com
-      enforce_members: yes
-      state: present
-
-- name: Delete a team
-  grafana_team:
-      url: "https://grafana.example.com"
-      grafana_api_key: "{{ some_api_token_value }}"
-      name: "grafana_working_group"
-      email: "foo.bar@example.com"
-      state: absent
+- name: create group in aad
+  total_azuread_group:
+    name: "{{ azuread_group.name }}"
+    description: "{{ azuread_group.description }}"
+    mail_nickname: "{{ azuread_group.mail_nickname }}"
+    state: "present"
+    validate_certs: False
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant_id: "{{ tenant_id }}"
+- name: delete group in aad
+  total_azuread_group:
+    name: "{{ azuread_group.name }}"
+    description: "{{ azuread_group.description }}"
+    mail_nickname: "{{ azuread_group.mail_nickname }}"
+    validate_certs: False
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant_id: "{{ tenant_id }}"
+    state: absent
 '''
 
 RETURN = '''
@@ -102,48 +122,162 @@ team:
     returned: On success
     type: complex
     contains:
-        avatarUrl:
-            description: The url of the Team avatar on Grafana server
+        @odata.context: 
+            description: Object context
             returned: always
             type: str
             sample:
-                - "/avatar/a7440323a684ea47406313a33156e5e9"
-        email:
-            description: The Team email address
-            returned: always
-            type: str
-            sample:
-                - "foo.bar@example.com"
+                - "https://graph.microsoft.com/v1.0/$metadata#groups/$entity"
         id:
-            description: The Team email address
-            returned: always
-            type: int
-            sample:
-                - 42
-        memberCount:
-            description: The number of Team members
-            returned: always
-            type: int
-            sample:
-                - 42
-        name:
-            description: The name of the team.
+            description: The unique identifier for the group.
             returned: always
             type: str
             sample:
-                - "grafana_working_group"
-        members:
-            description: The list of Team members
+                - "502df398-d59c-469d-944f-34a50e60db3f"
+        deletedDateTime:
+            description: 
+                - For some Azure Active Directory objects (user, group, application), if the object is deleted, 
+                - it is first logically deleted, and this property is updated with the date and time when the object 
+                - was deleted. Otherwise this property is null. If the object is restored, 
+                - this property is updated to null.
+            returned: always
+            type: str
+            sample:
+                - null
+        classification:
+            description: Describes a classification for the group (such as low, medium or high business impact). 
+            returned: always
+            type: str
+            sample:
+                - null
+        createdDateTime:
+            description: 
+                - Timestamp of when the group was created. 
+                - The value cannot be modified and is automatically populated when the group is created. 
+                - The Timestamp type represents date and time using ISO 8601 format and is always in UTC time. 
+            returned: always
+            type: str
+            sample:
+                - "2018-12-27T22:17:07Z"
+        creationOptions:
+            description: ???
             returned: always
             type: list
             sample:
-                - ["john.doe@exemple.com"]
-        orgId:
-            description: The organization id that the team is part of.
+                - []
+        description:
+            description: An optional description for the group.
             returned: always
-            type: int
+            type: str
             sample:
-                - 1
+                - "Group with designated owner and members"
+        displayName: 
+            description: 
+                - The display name for the group. 
+                - This property is required when a group is created and cannot be cleared during updates.
+            returned: always
+            type: str
+            sample:
+                - "Operations group"
+        groupTypes: 
+            description: Specifies the group type and its membership.
+            returned: always
+            type: list
+            sample:
+                - ["Unified"]
+        mail: 
+            description: The SMTP address for the group.
+            returned: always
+            type: str
+            sample:
+                - "operations2019@contoso.com"
+        mailEnabled: 
+            description: Specifies whether the group is mail-enabled.
+            returned: always
+            type: bool
+            sample:
+                - true
+        mailNickname:
+            description: 
+                - The mail alias for the group, unique in the organization. 
+                - This property must be specified when a group is created.
+            returned: always
+            type: str
+            sample:
+                - "operations2019"
+        onPremisesLastSyncDateTime: 
+            description: Indicates the last time at which the group was synced with the on-premises directory.
+            returned: always
+            type: str
+            sample:
+                - null
+        onPremisesSecurityIdentifier: 
+            description: 
+                - Contains the on-premises security identifier (SID) for the group that was synchronized 
+                - from on-premises to the cloud.
+            returned: always
+            type: str
+            sample:
+                - null
+        onPremisesSyncEnabled: 
+            description: 
+                - true if this group is synced from an on-premises directory; false if this group was originally 
+                - synced from an on-premises directory but is no longer synced; 
+                - null if this object has never been synced from an on-premises directory (default).
+            returned: always
+            type: str
+            sample:
+                - null
+        preferredDataLocation: 
+            description: The preferred data location for the group. 
+            returned: always
+            type: str
+            sample:
+                - "CAN"
+        proxyAddresses: 
+            description: Email addresses for the group that direct to the same group mailbox. 
+            returned: always
+            type: str
+            sample:
+                - ["SMTP:operations2019@contoso.com"]
+        renewedDateTime: 
+            description: 
+                - Timestamp of when the group was last renewed. 
+                - This cannot be modified directly and is only updated via the renew service action. 
+            returned: always
+            type: str
+            sample:
+                - "2018-12-27T22:17:07Z"
+        resourceBehaviorOptions: 
+            description: ???
+            returned: always
+            type: list
+            sample:
+                - []
+        resourceProvisioningOptions: 
+            description: ???
+            returned: always
+            type: list
+            sample:
+                - []
+        securityEnabled:
+            description: securityEnabled
+            returned: always
+            type: bool
+            sample:
+                - false
+        visibility: 
+            description: Specifies the visibility of an Office 365 group.
+            returned: always
+            type: str
+            sample:
+                - "Public"
+        onPremisesProvisioningErrors: 
+            description: Errors when using Microsoft synchronization product during provisioning.
+            returned: always
+            type: list
+            sample:
+                - []
 '''
 
 import json
@@ -154,10 +288,10 @@ from ansible.module_utils.common.dict_transformations import snake_dict_to_camel
 try:
     from requests_oauthlib import OAuth2Session
     from oauthlib.oauth2 import BackendApplicationClient
+
     HAS_DEPS = True
 except ImportError:
     HAS_DEPS = False
-
 
 __metaclass__ = type
 
@@ -196,7 +330,8 @@ class AzureActiveDirectoryInterface(object):
         client_id = self._module.params.get("client_id")
         client_secret = self._module.params.get("client_secret")
         scope = ["https://graph.microsoft.com/.default"]
-        token_url = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token".format(tenant_id=self._module.params.get("tenant_id"))
+        token_url = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token".format(
+            tenant_id=self._module.params.get("tenant_id"))
 
         client = BackendApplicationClient(client_id=client_id)
         oauth = OAuth2Session(client=client)
