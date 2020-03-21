@@ -399,7 +399,7 @@ argument_spec.update(
     tenant_id=dict(type='str', required=True),
     display_name=dict(type='str', required=True, aliases=["name"]),
     description=dict(type='str', required=True),
-    group_types=dict(type='list', default="Unified", choices=["Unified", "DynamicMembership"]),
+    group_types=dict(type='list', elements='str', default="Unified", choices=["Unified", "DynamicMembership"]),
     mail_enabled=dict(type='bool', default=True),
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
