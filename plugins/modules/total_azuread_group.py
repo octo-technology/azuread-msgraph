@@ -404,7 +404,7 @@ argument_spec.update(
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', default=[]),
-    members=dict(type='list', default=[]),
+    members=dict(type='list', elements='str', default=[]),
 )
 
 
