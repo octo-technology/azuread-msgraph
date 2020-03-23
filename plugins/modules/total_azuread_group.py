@@ -388,7 +388,7 @@ def build_group_from_params(params):
         if not params[param]:
             continue
         if param == "owners":
-            group["@odata."+param] = params[param]
+            group[param] = ["https://graph.microsoft.com/v1.0/users/" + elt for elt in params[param]]
         else:
             group[param] = params[param]
     return snake_dict_to_camel_dict(group)
