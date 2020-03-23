@@ -387,7 +387,10 @@ def build_group_from_params(params):
     for param in GROUP_PARAMS:
         if not params[param]:
             continue
-        group[param] = params[param]
+        if param == "owners":
+            group["@odata."+param] = params[param]
+        else:
+            group[param] = params[param]
     return snake_dict_to_camel_dict(group)
 
 
