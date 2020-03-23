@@ -43,6 +43,7 @@
     name: "{{ azuread_group.name }}"
     description: "new_desc"
     mail_nickname: "newnick"
+    owners: ["a802c037-468d-4dca-a21d-f60965f62313"]
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -62,6 +63,7 @@
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
+    owners: ["a802c037-468d-4dca-a21d-f60965f62313"]
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
@@ -78,6 +80,7 @@
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
+    owners: ["a802c037-468d-4dca-a21d-f60965f62313"]
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
