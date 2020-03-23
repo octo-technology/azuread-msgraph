@@ -348,6 +348,9 @@ class AzureActiveDirectoryInterface(object):
 
     def create_group(self, group):
         url = "/groups"
+        owners = group.pop("owners")
+        group["owners@odata.bind"] = owners
+        self._module.warn("creating : %s" % str(group))
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
@@ -364,6 +367,9 @@ class AzureActiveDirectoryInterface(object):
 
     def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
+        self._module.warn("update_group")
+        self._module.warn(str(group))
+        self._module.warn(url)
         self._send_request(url, data=group, headers=self.headers, method="PATCH")
 
     def delete_group(self, group_id):
@@ -387,10 +393,7 @@ def build_group_from_params(params):
     for param in GROUP_PARAMS:
         if not params[param]:
             continue
-        if param == "owners":
-            group[param+"@odata.bind"] = params[param]
-        else:
-            group[param] = params[param]
+        group[param] = params[param]
     return snake_dict_to_camel_dict(group)
 
 
@@ -407,16 +410,23 @@ argument_spec.update(
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', elements='str', required=True),
-    members=dict(type='list', elements='str', default=[]),
+    #members=dict(type='list', elements='str', default=[]),
 )
 
 
 def compare_groups(current, new):
     current_keys = current.keys()
     new_keys = new.keys()
-    keys_to_remove = [item for item in current_keys if item not in new_keys]
-    for item in keys_to_remove:
-        current.pop(item)
+    current_keys_to_remove = [item for item in current_keys if item not in new_keys]
+    new_keys_to_remove = ["owners", "members"]
+    # Remove the unknown keys from remote group
+    for item in current_keys_to_remove:
+        if item in current:
+            current.pop(item)
+    # Remove the keys that are not returned by Get method from new group
+    for item in new_keys_to_remove:
+        if item in new:
+            new.pop(item)
     if current != new:
         return dict(before=current, after=new)
 
@@ -442,6 +452,7 @@ def main():
             changed = True
         else:
             diff = compare_groups(group.copy(), new_group.copy())
+            module.warn(str(diff))
             if diff is not None:
                 azuread_iface.update_group(group.get("id"), new_group)
                 group = azuread_iface.get_group(name)
