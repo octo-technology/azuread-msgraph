@@ -367,15 +367,46 @@ class AzureActiveDirectoryInterface(object):
 
     def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
-        self._module.warn("update_group")
-        self._module.warn(str(group))
-        self._module.warn(url)
+        self._module.warn("update group: %s" % group)
         self._send_request(url, data=group, headers=self.headers, method="PATCH")
 
     def delete_group(self, group_id):
         url = "/groups/{group_id}".format(group_id=group_id)
         response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
+
+    def converge_owners(self, group_id, current, new, enforce):
+        changed = False
+        for owner in new:
+            if owner not in current:
+                changed = True
+                self.add_owner(group_id, owner)
+        if enforce:
+            for owner in current:
+                if owner not in owners:
+                    changed = True
+                    self.remove_owner(group_id, owner)
+        return changed
+
+    def get_owners(self, group_id):
+        url = "/groups/{group_id}/owners".format(group_id=group_id)
+        response = self._send_request(url, headers=self.headers, method="GET")
+        return response
+
+    def add_owner(self, group_id, owner):
+        url = "/groups/{group_id}/owners/$ref".format(group_id=group_id)
+        data = {"@odata.id": owner}
+        self._module.warn("add_owner: %s" % data)
+        response = self._send_request(url, data=data, headers=self.headers, method="POST")
+        return response
+
+    def remove_owner(self, group_id, owner):
+        owner_id = owner.split("/")[-1]
+        url = "/groups/{group_id}/owners/{owner_id}/$ref".format(group_id=group_id, owner_id=owner_id)
+        self._module.warn("remove_owner")
+        response = self._send_request(url, headers=self.headers, method="DELETE")
+        return response
+
 
 
 def setup_module_object():
@@ -388,7 +419,7 @@ def setup_module_object():
 
 def build_group_from_params(params):
     GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
-                    "mail_nickname", "security_enabled", "owners", "members"]
+                    "mail_nickname", "security_enabled", "owners"] #, "members"]
     group = {}
     for param in GROUP_PARAMS:
         if not params[param]:
@@ -410,6 +441,7 @@ argument_spec.update(
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', elements='str', required=True),
+    enforce_owners=dict(type='bool', required=False, default=False),
     #members=dict(type='list', elements='str', default=[]),
 )
 
@@ -439,6 +471,8 @@ def main():
 
     state = module.params['state']
     name = module.params['display_name']
+    owners = module.params['owners']
+    enforce_owners = module.params['enforce_owners']
 
     azuread_iface = AzureActiveDirectoryInterface(module)
     group = azuread_iface.get_group(name)
@@ -454,9 +488,15 @@ def main():
             diff = compare_groups(group.copy(), new_group.copy())
             module.warn(str(diff))
             if diff is not None:
-                azuread_iface.update_group(group.get("id"), new_group)
-                group = azuread_iface.get_group(name)
+                azuread_iface.update_group(group.get("id"), diff["after"])
                 changed = True
+            current_owners = azuread_iface.get_owners(group.get("id"))
+            if current_owners != owners:
+                owners_changed = azuread_iface.converge_owners(group.get("id"), current_owners, owners, enforce_owners)
+                if owners_changed:
+                    changed = True
+        group = azuread_iface.get_group(name)
+        group["owners"] = azuread_iface.get_owners(group.get("id"))
         module.exit_json(changed=changed, group=group, diff=diff)
     elif state == 'absent':
         if group is None:
