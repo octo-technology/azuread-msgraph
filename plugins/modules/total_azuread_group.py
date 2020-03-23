@@ -329,7 +329,7 @@ class AzureActiveDirectoryInterface(object):
             if body:
                 return self._module.from_json(body)
             return
-        self._module.fail_json(failed=True, msg="Grafana Teams API answered with HTTP %d" % status_code)
+        self._module.fail_json(failed=True, msg="Microsoft Graph API answered with HTTP %d" % status_code)
 
     def _get_token(self):
         client_id = self._module.params.get("client_id")
@@ -383,7 +383,7 @@ class AzureActiveDirectoryInterface(object):
                 self.add_owner(group_id, owner)
         if enforce:
             for owner in current:
-                if owner not in owners:
+                if owner not in new:
                     changed = True
                     self.remove_owner(group_id, owner)
         return changed
@@ -391,7 +391,12 @@ class AzureActiveDirectoryInterface(object):
     def get_owners(self, group_id):
         url = "/groups/{group_id}/owners".format(group_id=group_id)
         response = self._send_request(url, headers=self.headers, method="GET")
-        return response
+        return response.get("value")
+
+    def get_owners_id(self, group_id):
+        owners = self.get_owners(group_id)
+        owners_id = ["https://graph.microsoft.com/v1.0/users/"+owner.get('id') for owner in owners]
+        return owners_id
 
     def add_owner(self, group_id, owner):
         url = "/groups/{group_id}/owners/$ref".format(group_id=group_id)
@@ -490,7 +495,9 @@ def main():
             if diff is not None:
                 azuread_iface.update_group(group.get("id"), diff["after"])
                 changed = True
-            current_owners = azuread_iface.get_owners(group.get("id"))
+            current_owners = azuread_iface.get_owners_id(group.get("id"))
+            module.warn(str(current_owners))
+            module.warn(str(owners))
             if current_owners != owners:
                 owners_changed = azuread_iface.converge_owners(group.get("id"), current_owners, owners, enforce_owners)
                 if owners_changed:

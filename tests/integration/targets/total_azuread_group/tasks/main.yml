@@ -13,10 +13,10 @@
 
 - assert:
     that:
-    - result.changed
-    - result.group.displayName == "test-rre-Group"
-    - result.group.description == "test rre"
-    - result.group.mailNickname == "testrre"
+      - result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "test rre"
+      - result.group.mailNickname == "testrre"
 
 - name: create group in aad (idempotency)
   total_azuread_group:
@@ -33,31 +33,33 @@
 
 - assert:
     that:
-    - not result.changed
-    - result.group.displayName == "test-rre-Group"
-    - result.group.description == "test rre"
-    - result.group.mailNickname == "testrre"
+      - not result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "test rre"
+      - result.group.mailNickname == "testrre"
 
-      #- name: Update group in aad (idempotency)
-      #  total_azuread_group:
-      #    name: "{{ azuread_group.name }}"
-      #    description: "new_desc"
-      #    mail_nickname: "newnick"
-      #    owners: ["a802c037-468d-4dca-a21d-f60965f62313"]
-      #    state: "present"
-      #    validate_certs: False
-      #    client_id: "{{ client_id }}"
-      #    client_secret: "{{ client_secret }}"
-      #    tenant_id: "{{ tenant_id }}"
-      #  register: result
-      #
-      #- assert:
-      #    that:
-      #    - result.changed
-      #    - result.group.displayName == "test-rre-Group"
-      #    - result.group.description == "new_desc"
-      #    - result.group.mailNickname == "newnick"
-      #
+- name: Update group in aad (idempotency)
+  total_azuread_group:
+    name: "{{ azuread_group.name }}"
+    description: "new_desc"
+    mail_nickname: "newnick"
+    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313",
+             "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"]
+    enforce_owners: True
+    state: "present"
+    validate_certs: False
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant_id: "{{ tenant_id }}"
+  register: result
+
+- assert:
+    that:
+      - result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "new_desc"
+      - result.group.mailNickname == "newnick"
+
 - name: delete group in aad
   total_azuread_group:
     name: "{{ azuread_group.name }}"
@@ -73,7 +75,7 @@
 
 - assert:
     that:
-    - result.changed
+      - result.changed
 
 - name: delete group in aad (idempotency)
   total_azuread_group:
@@ -90,4 +92,4 @@
 
 - assert:
     that:
-    - not result.changed
+      - not result.changed
