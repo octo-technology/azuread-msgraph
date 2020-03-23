@@ -83,7 +83,7 @@ options:
     description:
       - This property represents the owners for the group at creation time.
       - directoryObject
-    default: []
+    required: true
     type: list
     elements: str
   members:
@@ -403,7 +403,7 @@ argument_spec.update(
     mail_enabled=dict(type='bool', default=True),
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
-    owners=dict(type='list', elements='str', default=[]),
+    owners=dict(type='list', elements='str', required=True),
     members=dict(type='list', elements='str', default=[]),
 )
 

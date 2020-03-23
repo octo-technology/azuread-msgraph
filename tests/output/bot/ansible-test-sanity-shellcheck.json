@@ -1,0 +1,10 @@
+{
+    "docs": "https://docs.ansible.com/ansible/2.9/dev_guide/testing/sanity/shellcheck.html",
+    "results": [
+        {
+            "message": "The test `ansible-test sanity --test shellcheck` [[explain](https://docs.ansible.com/ansible/2.9/dev_guide/testing/sanity/shellcheck.html)] failed with 1 error:",
+            "output": "tests/gen_creds.sh:5:7: SC2086: Double quote to prevent globbing and word splitting."
+        }
+    ],
+    "verified": false
+}
