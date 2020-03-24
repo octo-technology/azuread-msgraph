@@ -3,7 +3,8 @@
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
-    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"]
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -17,13 +18,15 @@
       - result.group.displayName == "test-rre-Group"
       - result.group.description == "test rre"
       - result.group.mailNickname == "testrre"
+      - result.group.owners | length == 1
 
 - name: create group in aad (idempotency)
   total_azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
-    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"]
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -37,14 +40,60 @@
       - result.group.displayName == "test-rre-Group"
       - result.group.description == "test rre"
       - result.group.mailNickname == "testrre"
+      - result.group.owners | length == 1
 
-- name: Update group in aad (idempotency)
+- name: Update group in aad by adding one additional owner
   total_azuread_group:
     name: "{{ azuread_group.name }}"
     description: "new_desc"
     mail_nickname: "newnick"
-    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313",
-             "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"]
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+    - "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
+    state: "present"
+    validate_certs: False
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant_id: "{{ tenant_id }}"
+  register: result
+
+- assert:
+    that:
+      - result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "new_desc"
+      - result.group.mailNickname == "newnick"
+      - result.group.owners | length == 2
+
+- name: Update group in aad by specifying only one owner without enforcing list
+  total_azuread_group:
+    name: "{{ azuread_group.name }}"
+    description: "new_desc"
+    mail_nickname: "newnick"
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+    state: "present"
+    validate_certs: False
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant_id: "{{ tenant_id }}"
+  register: result
+
+- assert:
+    that:
+      - not result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "new_desc"
+      - result.group.mailNickname == "newnick"
+      - result.group.owners | length == 2
+
+- name: Update group in aad by specifying only one owner and enforcing list
+  total_azuread_group:
+    name: "{{ azuread_group.name }}"
+    description: "new_desc"
+    mail_nickname: "newnick"
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     enforce_owners: True
     state: "present"
     validate_certs: False
@@ -59,13 +108,15 @@
       - result.group.displayName == "test-rre-Group"
       - result.group.description == "new_desc"
       - result.group.mailNickname == "newnick"
+      - result.group.owners | length == 1
 
 - name: delete group in aad
   total_azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
-    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"]
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
@@ -82,7 +133,8 @@
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
-    owners: ["https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"]
+    owners:
+    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"

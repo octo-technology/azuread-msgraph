@@ -437,7 +437,7 @@ argument_spec = url_argument_spec()
 argument_spec.update(
     state=dict(type='str', required=True, choices=["present", "absent"]),
     client_id=dict(type='str', required=True),
-    client_secret=dict(type='str', required=True),
+    client_secret=dict(type='str', required=True, no_log=True),
     tenant_id=dict(type='str', required=True),
     display_name=dict(type='str', required=True, aliases=["name"]),
     description=dict(type='str', required=True),
