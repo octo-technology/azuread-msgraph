@@ -86,13 +86,12 @@ options:
     required: true
     type: list
     elements: str
-  members:
+  enforce_owners:
     description:
-      - Users and groups that are members of this group.
-      - directoryObject
-    default: []
-    type: list
-    elements: str
+      - Enforce the list of owners provided in C(owners) by removing owners
+      - not in the list and adding missing ones.
+    required: false
+    type: bool
 extends_documentation_fragment:
 - url
 '''
@@ -395,7 +394,7 @@ class AzureActiveDirectoryInterface(object):
 
     def get_owners_id(self, group_id):
         owners = self.get_owners(group_id)
-        owners_id = ["https://graph.microsoft.com/v1.0/users/"+owner.get('id') for owner in owners]
+        owners_id = ["https://graph.microsoft.com/v1.0/users/" + owner.get('id') for owner in owners]
         return owners_id
 
     def add_owner(self, group_id, owner):
@@ -413,7 +412,6 @@ class AzureActiveDirectoryInterface(object):
         return response
 
 
-
 def setup_module_object():
     module = AnsibleModule(
         argument_spec=argument_spec,
@@ -424,7 +422,7 @@ def setup_module_object():
 
 def build_group_from_params(params):
     GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
-                    "mail_nickname", "security_enabled", "owners"] #, "members"]
+                    "mail_nickname", "security_enabled", "owners"]
     group = {}
     for param in GROUP_PARAMS:
         if not params[param]:
@@ -447,7 +445,6 @@ argument_spec.update(
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', elements='str', required=True),
     enforce_owners=dict(type='bool', required=False, default=False),
-    #members=dict(type='list', elements='str', default=[]),
 )
 
 
