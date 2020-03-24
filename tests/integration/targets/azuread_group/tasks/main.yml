@@ -1,5 +1,5 @@
 - name: create group in aad
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
@@ -21,7 +21,7 @@
       - result.group.owners | length == 1
 
 - name: create group in aad (idempotency)
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
@@ -43,7 +43,7 @@
       - result.group.owners | length == 1
 
 - name: Update group in aad by adding one additional owner
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "new_desc"
     mail_nickname: "newnick"
@@ -66,7 +66,7 @@
       - result.group.owners | length == 2
 
 - name: Update group in aad by specifying only one owner without enforcing list
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "new_desc"
     mail_nickname: "newnick"
@@ -88,7 +88,7 @@
       - result.group.owners | length == 2
 
 - name: Update group in aad by specifying only one owner and enforcing list
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "new_desc"
     mail_nickname: "newnick"
@@ -111,7 +111,7 @@
       - result.group.owners | length == 1
 
 - name: delete group in aad
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
@@ -129,7 +129,7 @@
       - result.changed
 
 - name: delete group in aad (idempotency)
-  total_azuread_group:
+  azuread_group:
     name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"

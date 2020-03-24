@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: total_azuread_group
+module: azuread_group
 author:
   - Rémi REY (@rrey)
   - Roberto Duarte (@DuarteRoberto)
@@ -100,7 +100,7 @@ extends_documentation_fragment:
 EXAMPLES = '''
 ---
 - name: create group in aad
-  total_azuread_group:
+  azuread_group:
     desired_name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
@@ -110,7 +110,7 @@ EXAMPLES = '''
     tenant_id: "{{ tenant_id }}"
 
 - name: delete group in aad
-  total_azuread_group:
+  azuread_group:
     desired_name: "{{ azuread_group.name }}"
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
