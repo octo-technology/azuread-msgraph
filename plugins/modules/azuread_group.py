@@ -349,7 +349,6 @@ class AzureActiveDirectoryInterface(object):
         url = "/groups"
         owners = group.pop("owners")
         group["owners@odata.bind"] = owners
-        self._module.warn("creating : %s" % str(group))
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
@@ -366,7 +365,6 @@ class AzureActiveDirectoryInterface(object):
 
     def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
-        self._module.warn("update group: %s" % group)
         self._send_request(url, data=group, headers=self.headers, method="PATCH")
 
     def delete_group(self, group_id):
@@ -400,14 +398,12 @@ class AzureActiveDirectoryInterface(object):
     def add_owner(self, group_id, owner):
         url = "/groups/{group_id}/owners/$ref".format(group_id=group_id)
         data = {"@odata.id": owner}
-        self._module.warn("add_owner: %s" % data)
         response = self._send_request(url, data=data, headers=self.headers, method="POST")
         return response
 
     def remove_owner(self, group_id, owner):
         owner_id = owner.split("/")[-1]
         url = "/groups/{group_id}/owners/{owner_id}/$ref".format(group_id=group_id, owner_id=owner_id)
-        self._module.warn("remove_owner")
         response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
 
@@ -488,13 +484,10 @@ def main():
             changed = True
         else:
             diff = compare_groups(group.copy(), new_group.copy())
-            module.warn(str(diff))
             if diff is not None:
                 azuread_iface.update_group(group.get("id"), diff["after"])
                 changed = True
             current_owners = azuread_iface.get_owners_id(group.get("id"))
-            module.warn(str(current_owners))
-            module.warn(str(owners))
             if current_owners != owners:
                 owners_changed = azuread_iface.converge_owners(group.get("id"), current_owners, owners, enforce_owners)
                 if owners_changed:
