@@ -37,7 +37,7 @@ collections:
     version: v0.1.0
 ```
 
-### Using modules from the Grafana Collection in your playbooks
+### Using modules from the AzureAD Collection in your playbooks
 
 You can either call modules by their Fully Qualified Collection Namespace (FQCN), like `octo.azuread.azuread_group`, or you can call modules by their short name if you list the `octo.azuread` collection in the playbook's `collections`, like so:
 
