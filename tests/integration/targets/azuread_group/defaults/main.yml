@@ -1,0 +1,10 @@
+---
+
+azuread_group:
+  name: test-rre-Group
+  description: "test rre"
+  mail_nickname: "testrre"
+
+client_id: "{{ lookup('ENV', 'ARM_CLIENT_ID')}}"
+client_secret: "{{ lookup('ENV', 'ARM_CLIENT_SECRET')}}"
+tenant_id: "{{ lookup('ENV', 'ARM_TENANT_ID')}}"
