@@ -82,7 +82,8 @@ options:
   owners:
     description:
       - This property represents the owners for the group.
-      - users
+      - It can only be a list of users.
+      - Should be of this form : "https://graph.microsoft.com/v1.0/users/{id}"
     required: true
     type: list
     elements: str
@@ -94,8 +95,10 @@ options:
     type: bool
   members:
     description:
-      - This property represents the members (users or/and groups)for the group.
-      - directoryObject
+      - This property represents the list of group members (users or/and groups).
+      - Since it can be groups and users, this is a list of directoryObject.
+      - Should be of this form : "https://graph.microsoft.com/v1.0/directoryObject/{id}"
+    default: []
     type: list
     elements: str
   enforce_members:
@@ -186,7 +189,7 @@ team:
             returned: always
             type: str
             sample:
-                - "Group with designated owners and members"
+                - "This is a random description of the group"
         displayName:
             description:
                 - The display name for the group.
@@ -359,10 +362,12 @@ class AzureActiveDirectoryInterface(object):
 
     def create_group(self, group):
         url = "/groups"
+        self._module.warn("creating : %s" % str(group))
         owners = group.pop("owners")
-        members = group.pop("members")
+        if group.get("members") is not None:
+            members = group.pop("members")
+            group["members@odata.bind"] = members
         group["owners@odata.bind"] = owners
-        group["members@odata.bind"] = members
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
@@ -526,6 +531,7 @@ def main():
 
     members = module.params['members']
     enforce_members = module.params['enforce_members']
+
     azuread_iface = AzureActiveDirectoryInterface(module)
     group = azuread_iface.get_group(name)
 
@@ -533,7 +539,6 @@ def main():
     diff = None
     if state == 'present':
         new_group = build_group_from_params(module.params)
-
         if group is None:
             group = azuread_iface.create_group(new_group)
             changed = True

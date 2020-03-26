@@ -5,8 +5,6 @@
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
     - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
-    members:
-    - "https://graph.microsoft.com/v1.0/directoryObjects/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -21,7 +19,6 @@
     - result.group.description == "test rre"
     - result.group.mailNickname == "testrre"
     - result.group.owners | length == 1
-    - result.group.members | length == 1
 
 - name: create group in aad (idempotency)
   azuread_group:
@@ -30,8 +27,6 @@
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
     - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
-    members:
-    - "https://graph.microsoft.com/v1.0/directoryObjects/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -46,7 +41,6 @@
     - result.group.description == "test rre"
     - result.group.mailNickname == "testrre"
     - result.group.owners | length == 1
-    - result.group.members | length == 1
 
 - name: Update group in aad by adding one additional member
   azuread_group:
@@ -57,7 +51,6 @@
     - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     members:
     - "https://graph.microsoft.com/v1.0/directoryObjects/a802c037-468d-4dca-a21d-f60965f62313"
-    - "https://graph.microsoft.com/v1.0/directoryObjects/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -72,7 +65,7 @@
       - result.group.description == "new_desc"
       - result.group.mailNickname == "newnick"
       - result.group.owners | length == 1
-      - result.group.members | length == 2
+      - result.group.members | length == 1
 
 - name: Update group in aad with no members and enforcing list
   azuread_group:
