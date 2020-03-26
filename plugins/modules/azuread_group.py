@@ -81,14 +81,31 @@ options:
     type: bool
   owners:
     description:
-      - This property represents the owners for the group at creation time.
-      - directoryObject
+      - This property represents the owners for the group.
+      - It can only be a list of users.
+      - A owner should be specified in a list and should have this form...
+      - "https://graph.microsoft.com/v1.0/users/idOfUser"
     required: true
     type: list
     elements: str
   enforce_owners:
     description:
       - Enforce the list of owners provided in C(owners) by removing owners
+      - not in the list and adding missing ones.
+    required: false
+    type: bool
+  members:
+    description:
+      - This property represents the list of group members (users or/and groups).
+      - Since it can be groups and users, this is a list of directoryObject.
+      - A member should be specified in a list and should have this form...
+      - "https://graph.microsoft.com/v1.0/directoryObject/idOfMember"
+    default: []
+    type: list
+    elements: str
+  enforce_members:
+    description:
+      - Enforce the list of members provided in C(members) by removing members
       - not in the list and adding missing ones.
     required: false
     type: bool
@@ -174,7 +191,7 @@ team:
             returned: always
             type: str
             sample:
-                - "Group with designated owner and members"
+                - "This is a random description of the group"
         displayName:
             description:
                 - The display name for the group.
@@ -348,6 +365,9 @@ class AzureActiveDirectoryInterface(object):
     def create_group(self, group):
         url = "/groups"
         owners = group.pop("owners")
+        if group.get("members") is not None:
+            members = group.pop("members")
+            group["members@odata.bind"] = members
         group["owners@odata.bind"] = owners
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
@@ -407,6 +427,42 @@ class AzureActiveDirectoryInterface(object):
         response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
 
+    def converge_members(self, group_id, current, new, enforce):
+        changed = False
+        for member in new:
+            if member not in current:
+                changed = True
+                self.add_member(group_id, member)
+        if enforce:
+            for member in current:
+                if member not in new:
+                    changed = True
+                    self.remove_member(group_id, member)
+        return changed
+
+    def get_members(self, group_id):
+        url = "/groups/{group_id}/members".format(group_id=group_id)
+        response = self._send_request(url, headers=self.headers, method="GET")
+        return response.get("value")
+
+    def get_members_id(self, group_id):
+        members = self.get_members(group_id)
+        # not users but directoryObjects because members can also be groups
+        members_id = ["https://graph.microsoft.com/v1.0/directoryObjects/" + member.get('id') for member in members]
+        return members_id
+
+    def add_member(self, group_id, member):
+        url = "/groups/{group_id}/members/$ref".format(group_id=group_id)
+        data = {"@odata.id": member}
+        response = self._send_request(url, data=data, headers=self.headers, method="POST")
+        return response
+
+    def remove_member(self, group_id, member):
+        member_id = member.split("/")[-1]
+        url = "/groups/{group_id}/members/{member_id}/$ref".format(group_id=group_id, member_id=member_id)
+        response = self._send_request(url, headers=self.headers, method="DELETE")
+        return response
+
 
 def setup_module_object():
     module = AnsibleModule(
@@ -418,7 +474,7 @@ def setup_module_object():
 
 def build_group_from_params(params):
     GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
-                    "mail_nickname", "security_enabled", "owners"]
+                    "mail_nickname", "security_enabled", "owners", "members"]
     group = {}
     for param in GROUP_PARAMS:
         if not params[param]:
@@ -441,6 +497,8 @@ argument_spec.update(
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', elements='str', required=True),
     enforce_owners=dict(type='bool', required=False, default=False),
+    members=dict(type='list', elements='str', default=[]),
+    enforce_members=dict(type='bool', required=False, default=False)
 )
 
 
@@ -472,6 +530,9 @@ def main():
     owners = module.params['owners']
     enforce_owners = module.params['enforce_owners']
 
+    members = module.params['members']
+    enforce_members = module.params['enforce_members']
+
     azuread_iface = AzureActiveDirectoryInterface(module)
     group = azuread_iface.get_group(name)
 
@@ -483,17 +544,28 @@ def main():
             group = azuread_iface.create_group(new_group)
             changed = True
         else:
+
             diff = compare_groups(group.copy(), new_group.copy())
             if diff is not None:
                 azuread_iface.update_group(group.get("id"), diff["after"])
                 changed = True
+
             current_owners = azuread_iface.get_owners_id(group.get("id"))
             if current_owners != owners:
                 owners_changed = azuread_iface.converge_owners(group.get("id"), current_owners, owners, enforce_owners)
                 if owners_changed:
                     changed = True
+
+            current_members = azuread_iface.get_members_id(group.get("id"))
+            if current_members != members:
+                members_changed = azuread_iface.converge_members(group.get("id"), current_members, members,
+                                                                 enforce_members)
+                if members_changed:
+                    changed = True
+
         group = azuread_iface.get_group(name)
         group["owners"] = azuread_iface.get_owners(group.get("id"))
+        group["members"] = azuread_iface.get_members(group.get("id"))
         module.exit_json(changed=changed, group=group, diff=diff)
     elif state == 'absent':
         if group is None:
