@@ -83,7 +83,7 @@ options:
     description:
       - This property represents the owners for the group.
       - It can only be a list of users.
-      - A owner should be specified in a list and should have this form
+      - A owner should be specified in a list and should have this form...
       - "https://graph.microsoft.com/v1.0/users/idOfUser"
     required: true
     type: list
@@ -98,7 +98,7 @@ options:
     description:
       - This property represents the list of group members (users or/and groups).
       - Since it can be groups and users, this is a list of directoryObject.
-      - A member should be specified in a list and should have this form
+      - A member should be specified in a list and should have this form...
       - "https://graph.microsoft.com/v1.0/directoryObject/idOfMember"
     default: []
     type: list
@@ -364,7 +364,6 @@ class AzureActiveDirectoryInterface(object):
 
     def create_group(self, group):
         url = "/groups"
-        self._module.warn("creating : %s" % str(group))
         owners = group.pop("owners")
         if group.get("members") is not None:
             members = group.pop("members")
