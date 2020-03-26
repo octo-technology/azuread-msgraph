@@ -83,7 +83,8 @@ options:
     description:
       - This property represents the owners for the group.
       - It can only be a list of users.
-      - Should be of this form : "https://graph.microsoft.com/v1.0/users/{id}"
+      - A owner should be specified in a list and should have this form : 
+      - "https://graph.microsoft.com/v1.0/users/idOfUser"
     required: true
     type: list
     elements: str
@@ -97,7 +98,8 @@ options:
     description:
       - This property represents the list of group members (users or/and groups).
       - Since it can be groups and users, this is a list of directoryObject.
-      - Should be of this form : "https://graph.microsoft.com/v1.0/directoryObject/{id}"
+      - A member should be specified in a list and should have this form : 
+      - "https://graph.microsoft.com/v1.0/directoryObject/idOfMember"
     default: []
     type: list
     elements: str
