@@ -59,7 +59,7 @@ options:
   group_types:
     description:
       - Specifies the group type and its membership.
-    default: "Unified"
+    default: []
     required: false
     type: list
     elements: str
@@ -67,7 +67,7 @@ options:
   mail_enabled:
     description:
       - Specifies whether the group is mail-enabled.
-    default: true
+    default: false
     type: bool
   mail_nickname:
     description:
@@ -336,10 +336,12 @@ class AzureActiveDirectoryInterface(object):
         status_code = info["status"]
         if status_code == 404:
             return None
+        elif status_code == 400:
+            self._module.fail_json(msg=json.loads(info["body"]).get("error"))
         elif status_code == 401:
-            self._module.fail_json(failed=True, msg="Unauthorized to perform action '%s' on '%s'" % (method, full_url))
+            self._module.fail_json(msg="Unauthorized to perform action '%s' on '%s'" % (method, full_url))
         elif status_code == 403:
-            self._module.fail_json(failed=True, msg="Permission Denied")
+            self._module.fail_json(msg="Permission Denied")
         elif 200 <= status_code < 299:
             body = resp.read()
             if body:
@@ -372,16 +374,15 @@ class AzureActiveDirectoryInterface(object):
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
         return response
 
-    def get_groups(self):
-        url = "/groups"
-        response = self._send_request(url, headers=self.headers, method="GET")
-        return response.get("value")
-
     def get_group(self, name):
-        groups = self.get_groups()
-        for group in groups:
-            if group.get("displayName") == name:
-                return group
+        url = "/groups?$filter=startswith(displayName,'%s')" % name
+        response = self._send_request(url, headers=self.headers, method="GET")
+        groups = response.get("value")
+        if len(groups) > 1:
+            self.module.fail_json(msg="Expected 1 group matching query, found %d" % len(groups))
+        elif len(groups) == 0:
+            return None
+        return groups[0]
 
     def update_group(self, group_id, group):
         url = "/groups/{group_id}".format(group_id=group_id)
@@ -477,9 +478,9 @@ def build_group_from_params(params):
                     "mail_nickname", "security_enabled", "owners", "members"]
     group = {}
     for param in GROUP_PARAMS:
-        if not params[param]:
-            continue
         group[param] = params[param]
+    if group["members"] == []:
+        group.pop("members")
     return snake_dict_to_camel_dict(group)
 
 
@@ -491,8 +492,8 @@ argument_spec.update(
     tenant_id=dict(type='str', required=True),
     display_name=dict(type='str', required=True, aliases=["name"]),
     description=dict(type='str', required=True),
-    group_types=dict(type='list', elements='str', default="Unified", choices=["Unified", "DynamicMembership"]),
-    mail_enabled=dict(type='bool', default=True),
+    group_types=dict(type='list', elements='str', default=[], choices=["Unified", "DynamicMembership"]),
+    mail_enabled=dict(type='bool', default=False),
     mail_nickname=dict(type='str', required=True),
     security_enabled=dict(type='bool', default=True),
     owners=dict(type='list', elements='str', required=True),
