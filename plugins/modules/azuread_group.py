@@ -333,6 +333,7 @@ class AzureActiveDirectoryInterface(object):
 
         full_url = "{ms_graph_api_url}{path}".format(ms_graph_api_url=self.ms_graph_api_url, path=url)
         resp, info = fetch_url(self._module, full_url, data=data, headers=headers, method=method)
+
         status_code = info["status"]
         if status_code == 404:
             return None
@@ -367,11 +368,16 @@ class AzureActiveDirectoryInterface(object):
     def create_group(self, group):
         url = "/groups"
         owners = group.pop("owners")
-        if group.get("members") is not None:
-            members = group.pop("members")
+        members = group.pop("members")
+        if members:
             group["members@odata.bind"] = members
         group["owners@odata.bind"] = owners
         response = self._send_request(url, data=group, headers=self.headers, method="POST")
+        return response
+
+    def delete_group(self, group_id):
+        url = "/groups/{group_id}".format(group_id=group_id)
+        response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
 
     def get_group(self, name):
@@ -388,10 +394,31 @@ class AzureActiveDirectoryInterface(object):
         url = "/groups/{group_id}".format(group_id=group_id)
         self._send_request(url, data=group, headers=self.headers, method="PATCH")
 
-    def delete_group(self, group_id):
-        url = "/groups/{group_id}".format(group_id=group_id)
-        response = self._send_request(url, headers=self.headers, method="DELETE")
-        return response
+    def converge_group(self, group_id, diff, enforce_owners, enforce_members):
+        current_group = diff.get("before")
+        new_group = diff.get("after")
+        changed = False
+
+        if current_group.get("owners") != new_group.get("owners"):
+            owners_changed = self.converge_owners(group_id, current_group.get("owners"),
+                                                  new_group.get("owners"), enforce_owners)
+            if owners_changed:
+                changed = True
+        current_group.pop("owners")
+        new_group.pop("owners")
+
+        if current_group.get("members") != new_group.get("members"):
+            members_changed = self.converge_members(group_id, current_group.get("members"),
+                                                    new_group.get("members"), enforce_members)
+            if members_changed:
+                changed = True
+        current_group.pop("members")
+        new_group.pop("members")
+
+        if current_group != new_group:
+            self.update_group(group_id, new_group)
+            changed = True
+        return changed
 
     def converge_owners(self, group_id, current, new, enforce):
         changed = False
@@ -414,7 +441,7 @@ class AzureActiveDirectoryInterface(object):
     def get_owners_id(self, group_id):
         owners = self.get_owners(group_id)
         owners_id = ["https://graph.microsoft.com/v1.0/users/" + owner.get('id') for owner in owners]
-        return owners_id
+        return sorted(owners_id)
 
     def add_owner(self, group_id, owner):
         url = "/groups/{group_id}/owners/$ref".format(group_id=group_id)
@@ -450,7 +477,7 @@ class AzureActiveDirectoryInterface(object):
         members = self.get_members(group_id)
         # not users but directoryObjects because members can also be groups
         members_id = ["https://graph.microsoft.com/v1.0/directoryObjects/" + member.get('id') for member in members]
-        return members_id
+        return sorted(members_id)
 
     def add_member(self, group_id, member):
         url = "/groups/{group_id}/members/$ref".format(group_id=group_id)
@@ -464,6 +491,15 @@ class AzureActiveDirectoryInterface(object):
         response = self._send_request(url, headers=self.headers, method="DELETE")
         return response
 
+    def build_group_from_api(self, name):
+        group = self.get_group(name)
+        if group is not None:
+            owners = self.get_owners_id(group.get("id"))
+            members = self.get_members_id(group.get("id"))
+            group["owners"] = owners
+            group["members"] = members
+        return group
+
 
 def setup_module_object():
     module = AnsibleModule(
@@ -471,17 +507,6 @@ def setup_module_object():
         supports_check_mode=False,
     )
     return module
-
-
-def build_group_from_params(params):
-    GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
-                    "mail_nickname", "security_enabled", "owners", "members"]
-    group = {}
-    for param in GROUP_PARAMS:
-        group[param] = params[param]
-    if group["members"] == []:
-        group.pop("members")
-    return snake_dict_to_camel_dict(group)
 
 
 argument_spec = url_argument_spec()
@@ -507,71 +532,57 @@ def compare_groups(current, new):
     current_keys = current.keys()
     new_keys = new.keys()
     current_keys_to_remove = [item for item in current_keys if item not in new_keys]
-    new_keys_to_remove = ["owners", "members"]
     # Remove the unknown keys from remote group
     for item in current_keys_to_remove:
         if item in current:
             current.pop(item)
     # Remove the keys that are not returned by Get method from new group
-    for item in new_keys_to_remove:
-        if item in new:
-            new.pop(item)
     if current != new:
         return dict(before=current, after=new)
 
 
+def build_group_from_playbook(params):
+    GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
+                    "mail_nickname", "security_enabled", "owners", "members"]
+    group = {}
+    for param in GROUP_PARAMS:
+        group[param] = params[param]
+    return snake_dict_to_camel_dict(group)
+
+
 def main():
     module = setup_module_object()
+    azuread_iface = AzureActiveDirectoryInterface(module)
 
     if not HAS_DEPS:
         module.fail_json(msg="module requires requests and requests-oauthlib")
 
-    state = module.params['state']
-    name = module.params['display_name']
-    owners = module.params['owners']
-    enforce_owners = module.params['enforce_owners']
-
-    members = module.params['members']
-    enforce_members = module.params['enforce_members']
-
-    azuread_iface = AzureActiveDirectoryInterface(module)
-    group = azuread_iface.get_group(name)
-
     changed = False
     diff = None
+
+    state = module.params['state']
+    name = module.params['display_name']
+    enforce_owners = module.params['enforce_owners']
+    enforce_members = module.params['enforce_members']
+    new_group = build_group_from_playbook(module.params)
+    current_group = azuread_iface.build_group_from_api(name)
+
     if state == 'present':
-        new_group = build_group_from_params(module.params)
-        if group is None:
+        if current_group is None:
             group = azuread_iface.create_group(new_group)
             changed = True
         else:
-
-            diff = compare_groups(group.copy(), new_group.copy())
+            current_group_id = current_group.get("id")
+            diff = compare_groups(current_group.copy(), new_group.copy())
             if diff is not None:
-                azuread_iface.update_group(group.get("id"), diff["after"])
-                changed = True
-
-            current_owners = azuread_iface.get_owners_id(group.get("id"))
-            if current_owners != owners:
-                owners_changed = azuread_iface.converge_owners(group.get("id"), current_owners, owners, enforce_owners)
-                if owners_changed:
-                    changed = True
-
-            current_members = azuread_iface.get_members_id(group.get("id"))
-            if current_members != members:
-                members_changed = azuread_iface.converge_members(group.get("id"), current_members, members,
-                                                                 enforce_members)
-                if members_changed:
-                    changed = True
-
-        group = azuread_iface.get_group(name)
-        group["owners"] = azuread_iface.get_owners(group.get("id"))
-        group["members"] = azuread_iface.get_members(group.get("id"))
+                changed = azuread_iface.converge_group(current_group_id, diff.copy(), enforce_owners, enforce_members)
+        group = azuread_iface.build_group_from_api(name)
         module.exit_json(changed=changed, group=group, diff=diff)
     elif state == 'absent':
-        if group is None:
+        if current_group is None:
             module.exit_json(failed=False, changed=False, message="No group found")
-        azuread_iface.delete_group(group.get("id"))
+        current_group_id = current_group.get("id")
+        azuread_iface.delete_group(current_group_id)
         module.exit_json(failed=False, changed=True, message="Group deleted")
 
 

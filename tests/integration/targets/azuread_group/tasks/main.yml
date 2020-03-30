@@ -4,7 +4,7 @@
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -14,11 +14,11 @@
 
 - assert:
     that:
-    - result.changed
-    - result.group.displayName == "test-rre-Group"
-    - result.group.description == "test rre"
-    - result.group.mailNickname == "testrre"
-    - result.group.owners | length == 1
+      - result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "test rre"
+      - result.group.mailNickname == "testrre"
+      - result.group.owners | length == 1
 
 - name: create group in aad (idempotency)
   azuread_group:
@@ -26,7 +26,7 @@
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -36,11 +36,11 @@
 
 - assert:
     that:
-    - not result.changed
-    - result.group.displayName == "test-rre-Group"
-    - result.group.description == "test rre"
-    - result.group.mailNickname == "testrre"
-    - result.group.owners | length == 1
+      - not result.changed
+      - result.group.displayName == "test-rre-Group"
+      - result.group.description == "test rre"
+      - result.group.mailNickname == "testrre"
+      - result.group.owners | length == 1
 
 - name: Update group in aad by adding one additional member
   azuread_group:
@@ -48,9 +48,9 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     members:
-    - "https://graph.microsoft.com/v1.0/directoryObjects/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/directoryObjects/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -73,7 +73,7 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     enforce_members: True
     state: "present"
     validate_certs: False
@@ -97,8 +97,8 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
-    - "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -120,7 +120,7 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     state: "present"
     validate_certs: False
     client_id: "{{ client_id }}"
@@ -142,7 +142,7 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     enforce_owners: True
     state: "present"
     validate_certs: False
@@ -165,7 +165,7 @@
     description: "new_desc"
     mail_nickname: "newnick"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
+      - "https://graph.microsoft.com/v1.0/users/ad9150c4-0e57-47e6-b9e0-3e0de15dec0d"
     enforce_owners: True
     state: "present"
     validate_certs: False
@@ -188,7 +188,7 @@
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
@@ -198,7 +198,7 @@
 
 - assert:
     that:
-    - result.changed
+      - result.changed
 
 - name: delete group in aad (idempotency)
   azuread_group:
@@ -206,7 +206,7 @@
     description: "{{ azuread_group.description }}"
     mail_nickname: "{{ azuread_group.mail_nickname }}"
     owners:
-    - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
+      - "https://graph.microsoft.com/v1.0/users/a802c037-468d-4dca-a21d-f60965f62313"
     validate_certs: False
     client_id: "{{ client_id }}"
     client_secret: "{{ client_secret }}"
@@ -216,4 +216,4 @@
 
 - assert:
     that:
-    - not result.changed
+      - not result.changed
