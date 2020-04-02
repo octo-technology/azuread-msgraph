@@ -494,10 +494,8 @@ class AzureActiveDirectoryInterface(object):
     def build_group_from_api(self, name):
         group = self.get_group(name)
         if group is not None:
-            owners = self.get_owners_id(group.get("id"))
-            members = self.get_members_id(group.get("id"))
-            group["owners"] = owners
-            group["members"] = members
+            group["owners"] = self.get_owners_id(group.get("id"))
+            group["members"] = self.get_members_id(group.get("id"))
         return group
 
 
@@ -541,7 +539,7 @@ def compare_groups(current, new):
         return dict(before=current, after=new)
 
 
-def build_group_from_playbook(params):
+def build_group_from_module(params):
     GROUP_PARAMS = ["display_name", "description", "group_types", "mail_enabled",
                     "mail_nickname", "security_enabled", "owners", "members"]
     group = {}
@@ -564,25 +562,29 @@ def main():
     name = module.params['display_name']
     enforce_owners = module.params['enforce_owners']
     enforce_members = module.params['enforce_members']
-    new_group = build_group_from_playbook(module.params)
+    new_group = build_group_from_module(module.params)
     current_group = azuread_iface.build_group_from_api(name)
 
     if state == 'present':
         if current_group is None:
+            if module.check_mode:
+                module.exit_json(changed=True, group=new_group, message="Group will be created")
             group = azuread_iface.create_group(new_group)
             changed = True
         else:
-            current_group_id = current_group.get("id")
             diff = compare_groups(current_group.copy(), new_group.copy())
             if diff is not None:
-                changed = azuread_iface.converge_group(current_group_id, diff.copy(), enforce_owners, enforce_members)
+                if module.check_mode:
+                    module.exit_json(changed=True, group=diff["after"], diff=diff)
+                changed = azuread_iface.converge_group(current_group.get("id"), diff.copy(), enforce_owners, enforce_members)
         group = azuread_iface.build_group_from_api(name)
         module.exit_json(changed=changed, group=group, diff=diff)
     elif state == 'absent':
         if current_group is None:
             module.exit_json(failed=False, changed=False, message="No group found")
-        current_group_id = current_group.get("id")
-        azuread_iface.delete_group(current_group_id)
+        if module.check_mode:
+            module.exit_json(changed=True, message="Group will be deleted")
+        azuread_iface.delete_group(current_group.get("id"))
         module.exit_json(failed=False, changed=True, message="Group deleted")
 
 
