@@ -1,7 +1,5 @@
 # Azure Active Directory Collection for Ansible
 
-![](https://github.com/octo-technology/azuread-msgraph/workflows/CI/badge.svg?branch=master)
-
 This repo hosts the `octo.azuread` Ansible Collection.
 The collection includes a variety of Ansible content to help automate the management of Active Directory resources through the **Microsft Graph API**.
 
