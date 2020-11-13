@@ -80,10 +80,10 @@ options:
     type: bool
   owners:
     description:
-      - This property represents the owners for the group.
-      - It can only be a list of users.
-      - A owner should be specified in a list and should have this form...
-      - "https://graph.microsoft.com/v1.0/users/idOfUser"
+      - This property represents the list of group owners.
+      - The list can contain users or servicePrincipal. Example:
+      - "https://graph.microsoft.com/v1.0/users/<User_object_id>"
+      - "https://graph.microsoft.com/v1.0/servicePrincipals/<sp_object_id>"
     required: true
     type: list
     elements: str
