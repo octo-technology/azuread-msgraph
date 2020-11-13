@@ -81,7 +81,7 @@ options:
   owners:
     description:
       - This property represents the list of group owners.
-      - The list can contain users or servicePrincipal. Example:
+      - The list can contain users or servicePrincipal. Example
       - "https://graph.microsoft.com/v1.0/users/<User_object_id>"
       - "https://graph.microsoft.com/v1.0/servicePrincipals/<sp_object_id>"
     required: true

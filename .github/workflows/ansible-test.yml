@@ -10,6 +10,7 @@ jobs:
     strategy:
       matrix:
         python_version: ["3.6", "3.7", "3.8"]
+        ansible_version: ["stable-2.9", "stable-2.10", "devel"]
     runs-on: ubuntu-latest
     steps:
 
@@ -24,7 +25,7 @@ jobs:
           python-version: ${{ matrix.python_version}}
 
       - name: Install ansible-base
-        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
+        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible_version }}.tar.gz --disable-pip-version-check
 
       - name: Run sanity tests
         run: ansible-test sanity --docker -v --color --python ${{ matrix.python_version}}
