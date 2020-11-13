@@ -18,7 +18,6 @@ module: azuread_group
 author:
   - Rémi REY (@rrey)
   - Roberto Duarte (@DuarteRoberto)
-version_added: "2.10"
 short_description: Manage azure ad groups
 description:
   - Create/update/delete AzureAD Groups through the Microsoft Graph API.
@@ -81,10 +80,10 @@ options:
     type: bool
   owners:
     description:
-      - This property represents the owners for the group.
-      - It can only be a list of users.
-      - A owner should be specified in a list and should have this form...
-      - "https://graph.microsoft.com/v1.0/users/idOfUser"
+      - This property represents the list of group owners.
+      - The list can contain users or servicePrincipal. Example
+      - "https://graph.microsoft.com/v1.0/users/<User_object_id>"
+      - "https://graph.microsoft.com/v1.0/servicePrincipals/<sp_object_id>"
     required: true
     type: list
     elements: str
@@ -317,21 +316,28 @@ except ImportError:
 __metaclass__ = type
 
 
+OBJECT_TYPE_MAP = {
+    '#microsoft.graph.user': "graph.microsoft.com/v1.0/users",
+    '#microsoft.graph.servicePrincipal': "graph.microsoft.com/v1.0/servicePrincipals"
+}
+
+
 class AzureActiveDirectoryInterface(object):
-    ms_graph_api_url = "https://graph.microsoft.com/v1.0"
+    ms_graph_api_url = "https://graph.microsoft.com"
 
     def __init__(self, module):
         self._module = module
         token = self._get_token()
         self.headers = {"Content-Type": "application/json", "Authorization": "Bearer %s" % token.get("access_token")}
 
-    def _send_request(self, url, data=None, headers=None, method="GET"):
+    def _send_request(self, url, data=None, headers=None, method="GET", api_version="v1.0"):
         if data is not None:
             data = json.dumps(data, sort_keys=True)
         if not headers:
             headers = []
 
-        full_url = "{ms_graph_api_url}{path}".format(ms_graph_api_url=self.ms_graph_api_url, path=url)
+        full_url = "{ms_graph_api_url}/{version}/{path}".format(ms_graph_api_url=self.ms_graph_api_url,
+                                                                version=api_version, path=url)
         resp, info = fetch_url(self._module, full_url, data=data, headers=headers, method=method)
         status_code = info["status"]
         if status_code == 404:
@@ -408,12 +414,18 @@ class AzureActiveDirectoryInterface(object):
 
     def get_owners(self, group_id):
         url = "/groups/{group_id}/owners".format(group_id=group_id)
-        response = self._send_request(url, headers=self.headers, method="GET")
+        response = self._send_request(url, headers=self.headers, method="GET",
+                                      api_version="beta")
         return response.get("value")
 
     def get_owners_id(self, group_id):
         owners = self.get_owners(group_id)
-        owners_id = ["https://graph.microsoft.com/v1.0/users/" + owner.get('id') for owner in owners]
+        owners_id = []
+        for owner in owners:
+            obj_type = owner.get('@odata.type')
+            obj_uri = OBJECT_TYPE_MAP.get(obj_type)
+            owner_url = "https://{uri}/{obj_id}".format(uri=obj_uri, obj_id=owner.get('id'))
+            owners_id.append(owner_url)
         return owners_id
 
     def add_owner(self, group_id, owner):

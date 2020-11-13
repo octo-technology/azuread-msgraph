@@ -7,55 +7,59 @@ on:
 
 jobs:
   sanity:
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Check out code
-        uses: actions/checkout@v1
-        with:
-          path: ansible_collections/total/azuread
-
-      - name: Set up Python 3.6
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.6
-
-      - name: Install ansible-base
-        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
-
-      - name: Run sanity tests
-        run: ansible-test sanity --docker -v --color --python 3.6
-
-  integration:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ["3.6"]
-    container:
-      image: python:${{ matrix.python_version }}-alpine
+        python_version: ["3.6", "3.7", "3.8"]
+        ansible_version: ["stable-2.9", "stable-2.10", "devel"]
+    runs-on: ubuntu-latest
     steps:
-
-      - name: Install requirements on alpine
-        run: apk add bash git gcc python3-dev libc-dev libffi-dev openssl-dev
 
       - name: Check out code
         uses: actions/checkout@v1
         with:
           path: ansible_collections/total/azuread
 
-      - name: Create credentials for the tests
-        run: tests/gen_creds.sh
-        env:
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      - name: Set up Python ${{ matrix.python_version}}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python_version}}
 
       - name: Install ansible-base
-        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
+        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible_version }}.tar.gz --disable-pip-version-check
 
-      - name: Install Pyhton deps
-        run: pip install -r requirements.txt
+      - name: Run sanity tests
+        run: ansible-test sanity --docker -v --color --python ${{ matrix.python_version}}
 
-      - name: Run integration tests on Python ${{ matrix.python_version }}
-        run: ansible-test integration -v --color --retry-on-error --python ${{ matrix.python_version }} --continue-on-error --diff
+#  integration:
+#    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        python_version: ["3.6"]
+#    container:
+#      image: python:${{ matrix.python_version }}-alpine
+#    steps:
+#
+#      - name: Install requirements on alpine
+#        run: apk add bash git gcc python3-dev libc-dev libffi-dev openssl-dev
+#
+#      - name: Check out code
+#        uses: actions/checkout@v1
+#        with:
+#          path: ansible_collections/total/azuread
+#
+#      - name: Create credentials for the tests
+#        run: tests/gen_creds.sh
+#        env:
+#          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+#          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+#          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+#          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+#
+#      - name: Install ansible-base
+#        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
+#
+#      - name: Install Pyhton deps
+#        run: pip install -r requirements.txt
+#
+#      - name: Run integration tests on Python ${{ matrix.python_version }}
+#        run: ansible-test integration -v --color --retry-on-error --python ${{ matrix.python_version }} --continue-on-error --diff

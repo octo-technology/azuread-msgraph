@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eux
 
 REPO_DIR=$(git rev-parse --show-toplevel)
 
